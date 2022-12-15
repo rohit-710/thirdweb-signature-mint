@@ -48,7 +48,7 @@ export default async function generateMintSignature(
 
     res.status(200).json(mintSignature);
   } else {
-    res.status(400).json({
+    res.status(500).json({
       message: "User does not have an early access NFT",
     });
   }

@@ -64,7 +64,7 @@ const Home: NextPage = () => {
 
     console.log(signedPayloadReq);
 
-    if (signedPayloadReq.status === 400)
+    if (signedPayloadReq.status === 500)
     {
       alert(
         "Looks like you don't own an early access NFT: You don't qualify for the free mint"
