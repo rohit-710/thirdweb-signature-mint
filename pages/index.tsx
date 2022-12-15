@@ -1,55 +1,129 @@
-import { ConnectWallet } from "@thirdweb-dev/react";
+import{
+  useAddress, 
+  useMetamask,
+  useContract, 
+  useNetwork, 
+  useNetworkMismatch,
+  ConnectWallet, 
+  ChainId
+} from "@thirdweb-dev/react";
+
+import {
+  SignatureDrop,
+  SignedPayload721WithQuantitySignature,
+} from "@thirdweb-dev/sdk";
+
+
 import type { NextPage } from "next";
 import styles from "../styles/Home.module.css";
 
 const Home: NextPage = () => {
+  
+  const address = useAddress();
+  const connectWithMetamask = useMetamask();
+  const isMismatch = useNetworkMismatch();
+  const [, switchNetwork] = useNetwork();
+
+  const { contract, isLoading, error } = useContract(
+    "0x934c99b6eD90AB20C23338F0a700DA900ec558D5",
+    "signature-drop",
+  );
+
+  async function claim() {
+    if (!address)
+    {
+      connectWithMetamask();
+      return;
+    }
+
+    if (isMismatch){
+      switchNetwork?.(ChainId.Goerli);
+      return;
+    }
+
+    try {
+      const tx =await contract?.claimTo(address, 1);
+      alert(`Successfully minted NFT`);
+    } catch (error: any){
+      alert(error?.message);
+    }
+  
+  }
+    async function claimWithSignature() {
+      if (!address) {
+      switchNetwork && switchNetwork(ChainId.Goerli);
+      return;
+    }
+
+    const signedPayloadReq = await fetch(`/api/generate-mint-signature`,{
+      method: "POST",
+      body: JSON.stringify({
+        address: address,
+      }),
+    });
+
+    console.log(signedPayloadReq);
+
+    if (signedPayloadReq.status === 400)
+    {
+      alert(
+        "Looks like you don't own an early access NFT: You don't qualify for the free mint"
+      );
+      return;
+    } else {
+      try {
+        const signedPayload = (await signedPayloadReq.json()) as SignedPayload721WithQuantitySignature;
+
+        console.log(signedPayload);
+
+        const nft = await contract?.signature.mint(signedPayload);
+
+        alert(`NFT was successfully minted!`);
+      } catch(error: any){
+        alert(error?.message);
+      }
+    }
+  }
+
+ 
+
   return (
     <div className={styles.container}>
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://thirdweb.com/">thirdweb</a>!
-        </h1>
-
-        <p className={styles.description}>
-          Get started by configuring your desired network in{" "}
-          <code className={styles.code}>pages/_app.tsx</code>, then modify the{" "}
-          <code className={styles.code}>pages/index.tsx</code> file!
-        </p>
-
-        <div className={styles.connect}>
-          <ConnectWallet />
-        </div>
-
-        <div className={styles.grid}>
-          <a href="https://portal.thirdweb.com/" className={styles.card}>
-            <h2>Portal &rarr;</h2>
-            <p>
-              Guides, references and resources that will help you build with
-              thirdweb.
+      {address ? (
+        <div className = {styles.nftBoxGrid}>
+          <div className = {styles.optionSelectBox} onClick={() => claim()}>
+            <h2 className = {styles.selectBoxTitle}>Claim NFT</h2>
+            <p className = {styles.selectBoxDescription}>
+              Use the normal <code>claim</code> function to mint an NFT 
+              under the claim conditions of the claim phase.
             </p>
-          </a>
+          </div>
 
-          <a href="https://thirdweb.com/dashboard" className={styles.card}>
-            <h2>Dashboard &rarr;</h2>
-            <p>
-              Deploy, configure and manage your smart contracts from the
-              dashboard.
-            </p>
-          </a>
-
-          <a
-            href="https://portal.thirdweb.com/templates"
-            className={styles.card}
+          <div className={styles.optionSelectBox}
+               onClick={() => claimWithSignature()}
           >
-            <h2>Templates &rarr;</h2>
-            <p>
-              Discover and clone template projects showcasing thirdweb features.
+            <h2 className={styles.selectBoxTitle}>Mint with Signature</h2>
+            <p className={styles.selectBoxDescription}>
+              Check if you are eligible to mint an NFT for free, 
+              by using signature-based minting.
             </p>
-          </a>
+
+          </div>
         </div>
-      </main>
+      ) : (
+        <button 
+           className = {styles.mainButton}
+           onClick = {() => connectWithMetamask()}
+        >
+          Connect Wallet
+        </button>
+      )}
     </div>
-  );
+
+  )
+
+
+
 };
 
 export default Home;
